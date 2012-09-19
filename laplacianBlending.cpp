@@ -16,10 +16,12 @@
  * ************************************************************************************
  */
 #include "cv.h"
-#include "huihgui.h"
+#include "highgui.h"
 #include <iostream>
-#include <vector>
+#include <string>
+#define  LEVELS 4
 using namespace std;
+
 /* 
  * ***  FUNCTION  **************************************************************
  *         Name:  blendImages
@@ -28,34 +30,35 @@ using namespace std;
  *       Output:  blended image dst
  * *****************************************************************************
  */
-void blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int nLevels )/*{{{*/
+void blendImages ( IplImage** A, IplImage** B, IplImage* R, IplImage* dst, int levels )
 {
-	/* 1. create LA & LB
-	 * 2. create GB
-	 * 3. costruct LS from LA, LB, with weigth GB
-	 * 3. construct blended image from LS
-	 * */
+	//1. create LA & LB
+	//2. create GB
+	//3. costruct LS from LA, LB, with weigth GB
+	//4. construct blended image from LS
 
-	vector<IplImage*> GR = R;
-	vector<IplImage*> LA, LB, LS;
-	vector<IplImage*> dst;
+	IplImage* GR[LEVELS] ={ R };
+	IplImage* LA[LEVELS], LB[LEVELS], LS[LEVELS];
+	IplImage* dst[LEVELS];
 
 	CvScalar curr_ls, curr_la, curr_lb, curr_gr;
 
 	int i, h, w;
 	double scalar;
-	/* get GB  */
-	for ( i = 1; i < nLevels; i++ )
+	// get GB  
+	IplImage* GB[0] = R; 
+	for ( i = 1; i < levels; i++ )
 	{
+		IplImage* GB[i] = cvCreateImage( cvSize(GB[i-1]->width/2,GB[i-1]->height/2), IPL_DEPTH_8U, 1 );
 		cvPyrDown( GB[i-1], GR[i], CV_GAUSSIAN_5x5 );
 	}
 
 	for ( i = 0; i < A->nChannels; i++ )
 	{
-		buildLaplacianPry( A , LA, nLevels );
-		buildLaplacianPry( B , LB, nLevels );
+		buildLaplacianPry( A , LA, levels );
+		buildLaplacianPry( B , LB, levels );
 		
-		/* construct LS */
+		// construct LS 
 		for ( l = 0; l < nLevels; l++ )
 		{
 			scalar = 1.0 / power( 2, l-1 );
@@ -63,7 +66,7 @@ void blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int nLe
 			{
 				for ( w = 0; w < width*scalar; w++ )
 				{
-					/* LS(i,j) = GB(i,j)*lA(i,j) + (1-GB(i,j)*LB(i,j)) */
+					// LS(i,j) = GB(i,j)*lA(i,j) + (1-GB(i,j)*LB(i,j)) 
 					curr_gr = cvGet2D( GR, w, h );
 					curr_la = cvGet2D( LA, w, h );
 					curr_lb = cvGet2D( LB, w, h );
@@ -80,19 +83,16 @@ void blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int nLe
 		}	
 	}
 
-
 	return 0;
-}/*-- end of function blendImages-- */
-/*}}}*/
-
-
+}
 /* 
  * ***  FUNCTION  **************************************************************
  *         Name:  reConstruct
  *  Description:  construct  new image from laplacian pryimd(LS)
  * *****************************************************************************
  */
-void reConstruct ( vector<IplImage*> LS, IplImage* dst, int nLevels )/*{{{*/
+ 
+void reConstruct ( vector<IplImage*> LS, IplImage* dst, int nLevels )
 {
 
 	IplImage* curr;
@@ -100,14 +100,14 @@ void reConstruct ( vector<IplImage*> LS, IplImage* dst, int nLevels )/*{{{*/
 	for ( i = nLevels-1; i > 0; i-- )
 	{
 		cvPyrUp( LS[i], curr, CV_GAUSSIAN_5x5 );
-		/* have a problem  the size ???? */
+		// have a problem  the size ???? 
 		cvAdd( LS[i-1], curr, curr , NULL );
 	}
 	
 
 	return 0;
-}/*-- end of function reConstruct-- */
-/*}}}*/
+}
+
 /* 
  * ***  FUNCTION  **************************************************************
  *         Name:  buildLaplacianPry
@@ -115,38 +115,52 @@ void reConstruct ( vector<IplImage*> LS, IplImage* dst, int nLevels )/*{{{*/
  *  Imput :	
  * *****************************************************************************
  */
-void buildLaplacianPry ( IplImage* src, vector<IplImage*> LSrc, int nLevels )/*{{{*/
+void buildLaplacianPry( IplImage* src, IplImage** LPyr, int levels )
 {
-	LSrc[0] = src;
-
+	IplImage* currentImage = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U,1); 
+    cvCvtColor(src,currentImage,CV_BGR2GRAY);  
 	int i;
-	/* get Gaussican pyr ---> Lsrc */
-	for ( i = 0; i < nLevels-1; i++ )
+
+	//LA(i) = GA(i) - expand(GA(i+1))
+	for ( i = 0; i < levels-1; i++ )
 	{
-		cvPyrDown( LSrc[i], LSrc[i+1], CV_GAUSSIAN_5x5 );
+		//the size of next level image
+		CvSize down_size = cvSize(currentImage->width/2, currentImage->height/2);
+		IplImage* down = cvCreateImage( down_size, IPL_DEPTH_8U, 1 );
 
+		cvPyrDown( currentImage, down, CV_GAUSSIAN_5x5 );
+
+		IplImage* up = cvCreateImage( cvGetSize(currentImage), IPL_DEPTH_8U, 1 );
+		cvPyrUp( down, up, CV_GAUSSIAN_5x5 );
+
+		LPyr[i] = cvCreateImage( cvGetSize(currentImage), IPL_DEPTH_8U, 1 );
+
+		cvSub( currentImage, up, LPyr[i], NULL );
+
+		currentImage = down;
+		cvReleaseImage( &up );
+		cvReleaseImage( &down );
 	}
-	/* LA(i) = GA(i) - expand(GA(i+1))  */
-	for ( i = 1; i < nLevels-1; i++ )
-	{
-		IplImage* curr_expand;
-		cvPyrUp( LSrc[i], curr_expand, CV_GAUSSIAN_5x5 );
-		cvSub( LSrc[i-1], curr_expand, LSrc[i-1], NULL );
-	}
+	LPyr[levels-1] = cvCreateImage( cvGetSize(currentImage), IPL_DEPTH_8U, 1 );
+	//get the lastest level --->Lpyr[last_index]
+	cvCopyImage( currentImage, LPyr[levels-1] );
 
-	return 0;
-}/*-- end of function buildLaplacianPry-- */
-/*}}}*/
-
+	cvReleaseImage( &currentImage );
+}
 
 int main()
 {
-	IplImage *src1, *src2;
-	IplImage *mask;
-	IplImage *dst;
-	int nLevel = 2;
-
-
-	blendImags( src1, src2, mask, dst, nLevels );
+	int levels = 4;
+	int i;
+	IplImage* LaplacianPry[4];
+	IplImage* src = cvLoadImage( "hand.bmp" );
+	buildLaplacianPry( src, LaplacianPry, levels );
+	for( i = 0; i < levels; i++ )
+	{
+		cvSaveImage(i+"level.png", LaplacianPry[i] );
+		//cvSaveImage("len1.png", LaplacianPry[1] );
+		//cvSaveImage("len2.png", LaplacianPry[2] );
+		//cvSaveImage("len3.png", LaplacianPry[3] );
+	}
 	return 0;
 }
