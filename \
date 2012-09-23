@@ -65,7 +65,7 @@ int blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int leve
 	int channels = A->nChannels;
 	
 	// get GB  
-	IplImage* mask = cvCreateImage(cvGetSize(R), depth, 1 );
+	IplImage* mask = cvCreateImage(cvGetSize(R), depth, channels );
 
 	if( R->nChannels > 1){
 		cvCvtColor( R, mask, CV_BGR2GRAY);  
@@ -78,7 +78,7 @@ int blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int leve
 	//cvSaveImage("GRRRR.png",GR[0]);
 	for ( i = 1; i < levels; i++ )
 	{
-		GR[i] = cvCreateImage( cvSize(GR[i-1]->width/2,GR[i-1]->height/2), GR[0]->depth, GR[0]->nChannels );
+		GR[i] = cvCreateImage( cvSize(GR[i-1]->width/2,GR[i-1]->height/2), depth, channels );
 		cout<<"huaijin"<<endl;
 		cvPyrDown( GR[i-1], GR[i], CV_GAUSSIAN_5x5 );
 		cout<<"nimei"<<endl;
@@ -113,7 +113,7 @@ int blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int leve
 				curr_lb = cvGet2D( LB[l], w, h );
 
 				curr_ls.val[0] = curr_gr.val[0] * curr_la.val[0] + (1-curr_gr.val[0])*curr_lb.val[0];
-				if (  channels ==3 ){
+				if (  channels > 1 ){
 					curr_ls.val[1] = curr_gr.val[0] * curr_la.val[1] + (1-curr_gr.val[0])*curr_lb.val[1];
 					curr_ls.val[2] = curr_gr.val[0] * curr_la.val[2] + (1-curr_gr.val[0])*curr_lb.val[2];
 				}
@@ -121,18 +121,12 @@ int blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int leve
 
 				cvSet2D( LS[l], w, h, curr_ls );
 			}/* endfor */
-
 		}/* endfor */
-		cout << "construct new Image " << endl;
 
-		cvNamedWindow("ok", CV_WINDOW_AUTOSIZE );
-		cvShowImage ( "ok", LS[l] );
-		cvWaitKey(0);
-		cvDestroyWindow("ok");
+		reConstruct( LS, dst, levels );
 
 	}/* endfor */	
 
-	reConstruct( LS, dst, levels );
 	cout << "exit blendImag()" <<endl;
 	return 0;
 }
@@ -285,12 +279,11 @@ int test_fun_blendImage()
 	IplImage* R = cvLoadImage( "mask.bmp" );
 
 	int channels = A->nChannels;
-	IplImage* dst = cvCreateImage( cvGetSize(A), A->depth, A->nChannels );
+	IplImage* dst[channels];
 	//blebding image
 	blendImages ( A, B, R, dst, levels );
 	
-
-	cvSaveImage("result.png", dst);
+	cvSaveImage("result.png", dst[0]);
 
 	cvReleaseImage( &A );
 	cvReleaseImage( &B);
@@ -303,8 +296,8 @@ int main()
 {
 	//test_fun_reConstruct();
 	//ok--->fun_buildP
-	//test_fun_buildLaplacianPry();
-	test_fun_blendImage();
+	test_fun_buildLaplacianPry();
+	//test_fun_blendImage();
 	return 0;
 
 }
