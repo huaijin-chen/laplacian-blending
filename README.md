@@ -8,4 +8,4 @@ the code is a simple  implementation of  A Multiresolution Spline with Applicant
  Compiler: gcc
 
  Input :
- ![input-image1] (./eye.bmp)
+ ![input-image1] (/eye.bmp)
