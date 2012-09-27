@@ -69,19 +69,27 @@ int blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int leve
 	IplImage*   mask = cvCreateImage( cvGetSize(R), IPL_DEPTH_32F, 1 ); 
 
 	cvCvtColor( R, mask8U, CV_BGR2GRAY);  
-	cvConvertScale( mask8U, mask );
+	cvConvertScale( mask8U, mask, 1.0/255 );
 	GR[0] = cvCloneImage( mask );
 
 	//cvSaveImage("GRRRR.png",GR[0]);
 	for ( i = 1; i < levels; i++ )
 	{
 		GR[i] = cvCreateImage( cvSize(GR[i-1]->width/2,GR[i-1]->height/2), GR[0]->depth, GR[0]->nChannels );
-		cout<<"huaijin"<<endl;
 		cvPyrDown( GR[i-1], GR[i], CV_GAUSSIAN_5x5 );
-		cout<<"nimei"<<endl;
 		//GR[i] = cvCloneImage( down );
 	}
-
+	for( i = 0 ; i < levels; i++ ){
+		/* -------------------------------show image ----------------------------------------- */
+		IplImage* GR_8U = cvCreateImage( cvGetSize(GR[i]), IPL_DEPTH_8U, 1 );
+		cvConvertScale( GR[i], GR_8U, 255 );
+		cvNamedWindow("mask", CV_WINDOW_AUTOSIZE );
+		cvShowImage ( "mask", GR_8U );
+		cvWaitKey(0);
+		cvDestroyWindow("mask");
+		cvReleaseImage( &GR_8U );
+		/* ----------------------------------end show image ---------------------------------- */
+	}
 	IplImage* LA[LEVELS];
 	IplImage* LB[LEVELS];
 	IplImage* LS[LEVELS];
@@ -120,7 +128,7 @@ int blendImages ( IplImage* A, IplImage* B, IplImage* R, IplImage* dst, int leve
 		//最后一层的结果很诡异
 		/* -------------------------------show image ----------------------------------------- */
 		IplImage* temp_8U = cvCreateImage( cvGetSize(LS[l]), IPL_DEPTH_8U, channels );
-		cvConvertScale( LS[l], temp_8U );
+		cvConvertScale( LS[l], temp_8U, 255 );
 		cvNamedWindow("LS", CV_WINDOW_AUTOSIZE );
 		cvShowImage ( "LS", temp_8U );
 		cvWaitKey(0);
@@ -166,7 +174,7 @@ void reConstruct ( IplImage** LS, IplImage* dst, int levels )
 
 		if ( i == 1 ){ 
 			cvCopy( curr, dst_32F );
-			cvConvertScale( dst_32F, dst  );
+			cvConvertScale( dst_32F, dst, 255  );
 		}
 	}
 	/*
@@ -195,7 +203,7 @@ void buildLaplacianPry( IplImage* src, IplImage** LPyr, int levels )
 	int channels = src->nChannels;
 	IplImage* currentImage = cvCreateImage(cvGetSize(src), depth, channels ); 
 	IplImage* src_32F = cvCreateImage( cvGetSize(src), depth, channels );
-	cvConvertScale( src,  src_32F  );
+	cvConvertScale( src,  src_32F, 1.0/255  );
 	cvCopy( src_32F, currentImage );
 	//create currentImage as the gray Image of src
     //cvCvtColor(src,currentImage,CV_BGR2GRAY);  
@@ -223,7 +231,7 @@ void buildLaplacianPry( IplImage* src, IplImage** LPyr, int levels )
 		//cvReleaseImage( &down );
 		/* --------------------------show images-------------------------------------- */
 		IplImage* temp_8Ui = cvCreateImage( cvGetSize(LPyr[i]), IPL_DEPTH_8U, channels );
-		cvConvertScale( LPyr[i], temp_8Ui );
+		cvConvertScale( LPyr[i], temp_8Ui, 255 );
 		cvNamedWindow("pyr", CV_WINDOW_AUTOSIZE );
 		cvShowImage ( "pyr", temp_8Ui );
 		cvWaitKey(0);
@@ -239,7 +247,7 @@ void buildLaplacianPry( IplImage* src, IplImage** LPyr, int levels )
 
 	/* ---------------------------show images---- */
 	IplImage* temp_8U = cvCreateImage( cvGetSize(LPyr[levels-1]), IPL_DEPTH_8U, channels );
-	cvConvertScale( LPyr[levels-1], temp_8U );
+	cvConvertScale( LPyr[levels-1], temp_8U, 255 );
 	cvNamedWindow("pyr", CV_WINDOW_AUTOSIZE );
 	cvShowImage ( "pyr", temp_8U);
 	cvWaitKey(0);

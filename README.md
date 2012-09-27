@@ -6,3 +6,6 @@ the code is a simple  implementation of  A Multiresolution Spline with Applicant
 
  Partform: Base on OpenCV & C int Linux 
  Compiler: gcc
+
+ Input :
+ ![input-image1] (./eye.bmp)
